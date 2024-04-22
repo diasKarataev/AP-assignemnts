@@ -8,3 +8,5 @@ CREATE TABLE IF NOT EXISTS module_infos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- +goose Down
