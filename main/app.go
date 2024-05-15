@@ -293,11 +293,12 @@ func setupRoutes(db *gorm.DB) *mux.Router {
 	// Auth required routes
 	auth := r.PathPrefix("/api").Subrouter()
 	auth.Use(AuthMiddleware())
-	r.HandleFunc("/users", getAllUserInfoHandler).Methods("GET")
-	r.HandleFunc("/users/{id}", getUserInfoHandler).Methods("GET")
+	auth.HandleFunc("/users", getAllUserInfoHandler).Methods("GET")
+	auth.HandleFunc("/users/{id}", getUserInfoHandler).Methods("GET")
 
 	// Admin role required routes
 	auth.Use(AdminAuthMiddleware())
+	auth.HandleFunc("/moduleinfo", createModuleInfo).Methods("POST")
 	auth.HandleFunc("/admin/users/{id}", editUserInfoHandler).Methods("PUT")
 	auth.HandleFunc("/admin/users/{id}", deleteUserInfoHandler).Methods("DELETE")
 
