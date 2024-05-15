@@ -31,7 +31,7 @@ const (
 
 var (
 	db             *gorm.DB
-	jwtSecret      = []byte(os.Getenv("JWT_SECRET"))
+	jwtSecret      = []byte("JWT_SECRET")
 	tokenExpiresIn = time.Hour * 24
 )
 
@@ -227,7 +227,7 @@ func ActivateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "User activated successfully"})
 }
 
-func GenerateToken(userId uint, fname, email string, isActivated bool, role string) (string, error) {
+func GenerateToken(userId uint, fname string, email string, isActivated bool, role string) (string, error) {
 	expirationTime := time.Now().Add(tokenExpiresIn)
 	claims := &model.Claims{
 		UserId:      userId,
@@ -240,19 +240,16 @@ func GenerateToken(userId uint, fname, email string, isActivated bool, role stri
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	str, err := token.SignedString(jwtSecret)
+	if err != nil {
+		log.Printf("Error signing token: %v", err)
+	}
+	return str, err
 }
 
 func main() {
-	// DB connection
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
-	var err error
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-	if err != nil {
-		log.Fatalf("Ошибка подключения к базе данных: %v", err)
-	}
+
+	db := initDB()
 
 	// Applying migrations
 	sqlDB, err := db.DB()
@@ -263,6 +260,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("Ошибка при применении миграций: %v", err)
 	}
+
+	r := setupRoutes(db)
+	log.Println("Сервер запущен на :8080")
+	http.ListenAndServe(":8080", r)
+}
+
+func initDB() *gorm.DB {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		log.Fatalf("Ошибка подключения к базе данных: %v", err)
+	}
+	return db
+}
+
+func setupRoutes(db *gorm.DB) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/moduleinfo", createModuleInfo).Methods("POST")
 	r.HandleFunc("/moduleinfo/{id}", getModuleInfo).Methods("GET")
@@ -286,8 +302,7 @@ func main() {
 	auth.HandleFunc("/admin/users/{id}", editUserInfoHandler).Methods("PUT")
 	auth.HandleFunc("/admin/users/{id}", deleteUserInfoHandler).Methods("DELETE")
 
-	log.Println("Сервер запущен на :8080")
-	http.ListenAndServe(":8080", r)
+	return r
 }
 
 func getUserInfoHandler(writer http.ResponseWriter, request *http.Request) {
