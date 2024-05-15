@@ -30,24 +30,38 @@ func runTestServer() (*httptest.Server, func()) {
 
 func TestLogin(t *testing.T) {
 	ts, cleanup := runTestServer()
-	defer ts.Close()
+	defer cleanup()
 
-	body := map[string]string{
-		"email":         "karataev020902@gmail.com",
+	registerBody := map[string]string{
+		"email":         "testuser@example.com",
+		"fname":         "Test User",
 		"password_hash": "password",
 	}
-	bodyBytes, err := json.Marshal(body)
+	registerBodyBytes, err := json.Marshal(registerBody)
 	if err != nil {
 		t.Fatalf("Could not encode body: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", ts.URL), bytes.NewBuffer(bodyBytes))
+	_, err = http.Post(ts.URL+"/register", "application/json", bytes.NewBuffer(registerBodyBytes))
+	if err != nil {
+		t.Fatalf("Could not register user: %v", err)
+	}
+
+	loginBody := map[string]string{
+		"email":         "testuser@example.com",
+		"password_hash": "password",
+	}
+	loginBodyBytes, err := json.Marshal(loginBody)
+	if err != nil {
+		t.Fatalf("Could not encode body: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", ts.URL), bytes.NewBuffer(loginBodyBytes))
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Отправляем запрос
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("Could not send request: %v", err)
@@ -56,6 +70,42 @@ func TestLogin(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Expected status OK; got %v", resp.StatusCode)
+	}
+}
+
+func TestRegister(t *testing.T) {
+	ts, cleanup := runTestServer()
+	defer ts.Close()
+
+	body := map[string]string{
+		"email":         "karataev020902@gmail.com",
+		"fname":         "dkcreator",
+		"password_hash": "password",
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("Could not encode body: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/register", ts.URL), bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Could not send request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	//if resp.StatusCode != http.StatusCreated {
+	//	t.Fatalf("Expected status Created; got %v", resp.StatusCode)
+	//}
+
+	var user data.UserInfo
+	if err := db.Where("email = ?", "karataev020902@gmail.com").First(&user).Error; err != nil {
+		t.Fatalf("Could not find user in database: %v", err)
 	}
 	cleanup()
 }
