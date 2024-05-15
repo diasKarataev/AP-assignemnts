@@ -248,8 +248,8 @@ func GenerateToken(userId uint, fname string, email string, isActivated bool, ro
 }
 
 func main() {
-
-	db := initDB()
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
+	db := initDB(dsn)
 
 	// Applying migrations
 	sqlDB, err := db.DB()
@@ -266,8 +266,7 @@ func main() {
 	http.ListenAndServe(":8080", r)
 }
 
-func initDB() *gorm.DB {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
+func initDB(dsn string) *gorm.DB {
 	var err error
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
